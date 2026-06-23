@@ -432,13 +432,9 @@ async function analyze() {
     // 1. Riot ID → PUUID
     const account = await apiFetch(`${base}/api/account/${encodeURIComponent(riotId.gameName)}/${encodeURIComponent(riotId.tagLine)}`);
 
-    setStatus('<span class="spinner"></span>Finding summoner…', 'info');
-    // 2. PUUID → Summoner
-    const summoner = await apiFetch(`${base}/api/summoner/${account.puuid}`);
-
     setStatus('<span class="spinner"></span>Fetching live game…', 'info');
-    // 3. Summoner → Live game
-    const game = await apiFetch(`${base}/api/livegame/${summoner.id}`);
+    // 2. PUUID → Live game directly (Spectator v5 supports PUUID)
+    const game = await apiFetch(`${base}/api/livegame/${account.puuid}`);
     gameData = game;
 
     setStatus('', 'info');
