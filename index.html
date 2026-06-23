@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Rift Scout — Live Game Analyzer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  /* ── Design tokens ──────────────────────────────────────────────────────── */
+  :root {
+    --ink:       #0a0c10;
+    --panel:     #0f1318;
+    --surface:   #161b24;
+    --border:    #1e2733;
+    --muted:     #2a3545;
+    --gold:      #c89b3c;
+    --gold-dim:  #7a5c1e;
+    --blue:      #4fc3f7;
+    --red:       #ef5350;
+    --green:     #66bb6a;
+    --text:      #c8d0dc;
+    --text-dim:  #6b7a8d;
+    --radius:    6px;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--ink);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  /* ── Header ─────────────────────────────────────────────────────────────── */
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 18px 24px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: var(--panel);
+  }
+  header svg { flex-shrink: 0; }
+  header h1 {
+    font-family: 'Cinzel', serif;
+    font-size: 20px;
+    color: var(--gold);
+    letter-spacing: 0.04em;
+  }
+  header span {
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-top: 2px;
+    display: block;
+  }
+
+  /* ── Search bar ─────────────────────────────────────────────────────────── */
+  #search-section {
+    max-width: 680px;
+    margin: 40px auto 0;
+    padding: 0 20px;
+  }
+  #search-section p {
+    color: var(--text-dim);
+    font-size: 13px;
+    margin-bottom: 14px;
+    text-align: center;
+  }
+  .search-row {
+    display: flex;
+    gap: 10px;
+  }
+  #riot-id-input {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 15px;
+    padding: 12px 16px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  #riot-id-input:focus { border-color: var(--gold-dim); }
+  #riot-id-input::placeholder { color: var(--text-dim); }
+
+  #search-btn {
+    background: var(--gold);
+    border: none;
+    border-radius: var(--radius);
+    color: var(--ink);
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    padding: 12px 22px;
+    transition: opacity 0.15s;
+    white-space: nowrap;
+  }
+  #search-btn:hover { opacity: 0.88; }
+  #search-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* config link */
+  #config-toggle {
+    text-align: center;
+    margin-top: 10px;
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+  #config-toggle a { color: var(--gold-dim); cursor: pointer; text-decoration: underline; }
+  #config-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-top: 10px;
+    padding: 14px 16px;
+    display: none;
+  }
+  #config-panel label { display: block; font-size: 12px; color: var(--text-dim); margin-bottom: 4px; }
+  #config-panel input {
+    width: 100%;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    padding: 8px 10px;
+    outline: none;
+    margin-bottom: 10px;
+  }
+  #config-panel input:focus { border-color: var(--gold-dim); }
+  #save-config {
+    background: var(--muted);
+    border: none;
+    border-radius: var(--radius);
+    color: var(--text);
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 7px 14px;
+  }
+  #save-config:hover { background: var(--border); }
+
+  /* ── Status / error ─────────────────────────────────────────────────────── */
+  #status {
+    max-width: 680px;
+    margin: 16px auto 0;
+    padding: 0 20px;
+    text-align: center;
+    font-size: 13px;
+    min-height: 22px;
+  }
+  .status-error { color: var(--red); }
+  .status-info  { color: var(--text-dim); }
+  .status-ok    { color: var(--green); }
+
+  /* ── Main results container ─────────────────────────────────────────────── */
+  #results { max-width: 1100px; margin: 30px auto 60px; padding: 0 20px; display: none; }
+
+  /* ── Team comp banner ───────────────────────────────────────────────────── */
+  #comp-banner {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px 22px;
+    margin-bottom: 24px;
+  }
+  #comp-banner h2 {
+    font-family: 'Cinzel', serif;
+    font-size: 13px;
+    color: var(--gold);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+  #comp-analysis {
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.7;
+    white-space: pre-wrap;
+  }
+  #comp-analysis.loading { color: var(--text-dim); font-style: italic; }
+
+  /* ── Teams grid ─────────────────────────────────────────────────────────── */
+  .teams-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+    margin-bottom: 24px;
+  }
+  @media (max-width: 700px) { .teams-grid { grid-template-columns: 1fr; } }
+
+  .team-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .team-header {
+    padding: 10px 16px;
+    font-family: 'Cinzel', serif;
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--border);
+  }
+  .team-header.blue-side { color: var(--blue); }
+  .team-header.red-side  { color: var(--red); }
+
+  /* ── Player row ─────────────────────────────────────────────────────────── */
+  .player-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: background 0.12s;
+  }
+  .player-row:last-child { border-bottom: none; }
+  .player-row:hover { background: var(--surface); }
+  .player-row.active { background: var(--surface); outline: 1px solid var(--gold-dim); }
+
+  .champ-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 4px;
+    object-fit: cover;
+    flex-shrink: 0;
+    background: var(--muted);
+  }
+  .player-info { flex: 1; min-width: 0; }
+  .player-name {
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .champ-name { font-size: 12px; color: var(--text-dim); }
+  .rank-badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--gold);
+    white-space: nowrap;
+  }
+
+  /* ── Matchup drawer ─────────────────────────────────────────────────────── */
+  #matchup-drawer {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px 22px;
+    display: none;
+  }
+  #matchup-drawer h2 {
+    font-family: 'Cinzel', serif;
+    font-size: 13px;
+    color: var(--gold);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  #matchup-subtitle { font-size: 12px; color: var(--text-dim); margin-bottom: 14px; }
+  #matchup-content {
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.75;
+    white-space: pre-wrap;
+  }
+  #matchup-content.loading { color: var(--text-dim); font-style: italic; }
+
+  /* ── Spinner ────────────────────────────────────────────────────────────── */
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spinner {
+    display: inline-block;
+    width: 14px; height: 14px;
+    border: 2px solid var(--muted);
+    border-top-color: var(--gold);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    vertical-align: middle;
+    margin-right: 6px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <!-- Sword / crosshair icon -->
+  <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="14" cy="14" r="12" stroke="#c89b3c" stroke-width="1.5"/>
+    <line x1="14" y1="4" x2="14" y2="24" stroke="#c89b3c" stroke-width="1.5"/>
+    <line x1="4" y1="14" x2="24" y2="14" stroke="#c89b3c" stroke-width="1.5"/>
+    <circle cx="14" cy="14" r="2.5" fill="#c89b3c"/>
+  </svg>
+  <div>
+    <h1>Rift Scout</h1>
+    <span>Live Game Analyzer · NA</span>
+  </div>
+</header>
+
+<section id="search-section">
+  <p>Enter any player's Riot ID to analyze their live game</p>
+  <div class="search-row">
+    <input id="riot-id-input" type="text" placeholder="PlayerName#NA1" autocomplete="off" />
+    <button id="search-btn" onclick="analyze()">Analyze Game</button>
+  </div>
+  <div id="config-toggle"><a onclick="toggleConfig()">⚙ Configure backend URL &amp; API keys</a></div>
+  <div id="config-panel">
+    <label>Backend URL (your Render service, e.g. https://your-app.onrender.com)</label>
+    <input id="cfg-backend" type="text" placeholder="https://your-app.onrender.com" />
+    <label>Anthropic API Key (for AI analysis — stays in your browser only)</label>
+    <input id="cfg-anthropic" type="password" placeholder="sk-ant-..." />
+    <button id="save-config" onclick="saveConfig()">Save</button>
+  </div>
+</section>
+
+<div id="status"></div>
+<div id="results">
+  <div id="comp-banner">
+    <h2>Team Composition &amp; Game Plan</h2>
+    <div id="comp-analysis" class="loading">Analyzing team compositions…</div>
+  </div>
+  <div class="teams-grid">
+    <div class="team-card">
+      <div class="team-header blue-side">Blue Side</div>
+      <div id="blue-team"></div>
+    </div>
+    <div class="team-card">
+      <div class="team-header red-side">Red Side</div>
+      <div id="red-team"></div>
+    </div>
+  </div>
+  <div id="matchup-drawer">
+    <h2 id="matchup-title">Matchup Analysis</h2>
+    <div id="matchup-subtitle"></div>
+    <div id="matchup-content" class="loading"></div>
+  </div>
+</div>
+
+<script>
+// ── Config persistence ────────────────────────────────────────────────────────
+function getConfig() {
+  return {
+    backend:   localStorage.getItem('rs_backend')   || '',
+    anthropic: localStorage.getItem('rs_anthropic') || '',
+  };
+}
+function saveConfig() {
+  localStorage.setItem('rs_backend',   document.getElementById('cfg-backend').value.trim());
+  localStorage.setItem('rs_anthropic', document.getElementById('cfg-anthropic').value.trim());
+  setStatus('Config saved.', 'ok');
+}
+function toggleConfig() {
+  const panel = document.getElementById('config-panel');
+  const cfg = getConfig();
+  document.getElementById('cfg-backend').value   = cfg.backend;
+  document.getElementById('cfg-anthropic').value = cfg.anthropic;
+  panel.style.display = panel.style.display === 'block' ? 'none' : 'block';
+}
+function setStatus(msg, type = 'info') {
+  const el = document.getElementById('status');
+  el.className = `status-${type}`;
+  el.innerHTML = msg;
+}
+
+// ── Data Dragon helpers ───────────────────────────────────────────────────────
+let ddVersion = '14.10.1';
+let championById = {};   // keyed by string champion key (number id)
+let championByName = {}; // keyed by champion name
+
+async function loadChampionData(backendBase) {
+  try {
+    const res = await fetch(`${backendBase}/api/champions`);
+    const json = await res.json();
+    ddVersion = json.version;
+    for (const [name, champ] of Object.entries(json.data)) {
+      championById[champ.key]  = champ;
+      championByName[name]     = champ;
+    }
+  } catch (_) { /* fallback silently */ }
+}
+
+function champIconUrl(champName) {
+  return `https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/champion/${champName}.png`;
+}
+
+// ── Riot ID parsing ───────────────────────────────────────────────────────────
+function parseRiotId(raw) {
+  const parts = raw.trim().split('#');
+  if (parts.length !== 2 || !parts[0] || !parts[1])
+    throw new Error('Enter your Riot ID as Name#Tag — e.g. PlayerName#NA1');
+  return { gameName: parts[0].trim(), tagLine: parts[1].trim() };
+}
+
+// ── Main analyze flow ─────────────────────────────────────────────────────────
+let gameData = null;
+let activePlayerRow = null;
+
+async function analyze() {
+  const cfg = getConfig();
+  if (!cfg.backend) {
+    setStatus('⚠ Set your backend URL in ⚙ Config first.', 'error');
+    document.getElementById('config-panel').style.display = 'block';
+    return;
+  }
+  const raw = document.getElementById('riot-id-input').value;
+  let riotId;
+  try { riotId = parseRiotId(raw); }
+  catch (e) { setStatus(e.message, 'error'); return; }
+
+  const btn = document.getElementById('search-btn');
+  btn.disabled = true;
+  document.getElementById('results').style.display = 'none';
+  setStatus('<span class="spinner"></span>Looking up account…', 'info');
+
+  const base = cfg.backend.replace(/\/$/, '');
+
+  try {
+    // 1. Riot ID → PUUID
+    const account = await apiFetch(`${base}/api/account/${encodeURIComponent(riotId.gameName)}/${encodeURIComponent(riotId.tagLine)}`);
+
+    setStatus('<span class="spinner"></span>Finding summoner…', 'info');
+    // 2. PUUID → Summoner
+    const summoner = await apiFetch(`${base}/api/summoner/${account.puuid}`);
+
+    setStatus('<span class="spinner"></span>Fetching live game…', 'info');
+    // 3. Summoner → Live game
+    const game = await apiFetch(`${base}/api/livegame/${summoner.id}`);
+    gameData = game;
+
+    setStatus('', 'info');
+    await loadChampionData(base);
+    renderGame(game, riotId.gameName, cfg.anthropic);
+    runCompAnalysis(game, cfg.anthropic);
+  } catch (e) {
+    setStatus(e.message, 'error');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function apiFetch(url) {
+  const res = await fetch(url);
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
+  return json;
+}
+
+// ── Render both teams ─────────────────────────────────────────────────────────
+function renderGame(game, searchedName, anthropicKey) {
+  const blue = game.participants.filter(p => p.teamId === 100);
+  const red  = game.participants.filter(p => p.teamId === 200);
+
+  document.getElementById('blue-team').innerHTML = '';
+  document.getElementById('red-team').innerHTML  = '';
+  document.getElementById('matchup-drawer').style.display = 'none';
+  document.getElementById('results').style.display = 'block';
+
+  renderTeam(blue, 'blue-team', anthropicKey, game);
+  renderTeam(red,  'red-team',  anthropicKey, game);
+}
+
+function renderTeam(players, containerId, anthropicKey, game) {
+  const container = document.getElementById(containerId);
+  for (const p of players) {
+    const champ = championById[String(p.championId)];
+    const champName = champ ? champ.id : `Champion ${p.championId}`;
+    const row = document.createElement('div');
+    row.className = 'player-row';
+    row.dataset.summonerName = p.riotId || p.summonerName || 'Unknown';
+    row.dataset.champion = champName;
+    row.dataset.teamId = p.teamId;
+    row.innerHTML = `
+      <img class="champ-icon" src="${champIconUrl(champName)}" alt="${champName}"
+           onerror="this.src='https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/champion/Lux.png'" />
+      <div class="player-info">
+        <div class="player-name">${p.riotId || p.summonerName || 'Unknown'}</div>
+        <div class="champ-name">${champName}</div>
+      </div>
+    `;
+    row.onclick = () => openMatchup(row, game, anthropicKey);
+    container.appendChild(row);
+  }
+}
+
+// ── Matchup drawer ────────────────────────────────────────────────────────────
+async function openMatchup(row, game, anthropicKey) {
+  if (activePlayerRow) activePlayerRow.classList.remove('active');
+  row.classList.add('active');
+  activePlayerRow = row;
+
+  const myChamp  = row.dataset.champion;
+  const myTeamId = Number(row.dataset.teamId);
+  const enemies  = game.participants.filter(p => p.teamId !== myTeamId);
+
+  const enemyChamps = enemies.map(p => {
+    const c = championById[String(p.championId)];
+    return c ? c.id : `Champion${p.championId}`;
+  });
+
+  const drawer = document.getElementById('matchup-drawer');
+  drawer.style.display = 'block';
+  document.getElementById('matchup-title').textContent = `${myChamp} vs Enemy Team`;
+  document.getElementById('matchup-subtitle').textContent =
+    `Click any player to see their matchup breakdown`;
+  const content = document.getElementById('matchup-content');
+  content.className = 'loading';
+  content.textContent = '⚔ Analyzing matchup…';
+
+  drawer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  if (!anthropicKey) {
+    content.className = '';
+    content.textContent = '⚙ Add your Anthropic API key in Config to enable AI matchup analysis.';
+    return;
+  }
+
+  const prompt = `You are an expert League of Legends coach. Analyze the following matchup:
+
+Player's champion: ${myChamp}
+Enemy team: ${enemyChamps.join(', ')}
+
+Provide a clear, practical breakdown:
+1. BIGGEST THREATS — which enemy champion(s) are most dangerous and why
+2. POWER SPIKES — key levels and item timings to watch for (both yours and theirs)
+3. EARLY GAME (laning) — how to play the first 10 minutes, trade patterns, when to engage or avoid
+4. MID/LATE GAME — teamfight role, positioning, priority targets
+5. ITEMS TO RUSH — 1-2 specific first/second item recommendations and why they work in this game
+6. KEY WARNINGS — 2-3 specific things NOT to do in this matchup
+
+Be specific and direct. No generic advice. Write as if coaching a Diamond player mid-game.`;
+
+  try {
+    const text = await callClaude(prompt, anthropicKey);
+    content.className = '';
+    content.textContent = text;
+  } catch (e) {
+    content.className = '';
+    content.textContent = `Error: ${e.message}`;
+  }
+}
+
+// ── Team comp / game plan analysis ───────────────────────────────────────────
+async function runCompAnalysis(game, anthropicKey) {
+  const compEl = document.getElementById('comp-analysis');
+  if (!anthropicKey) {
+    compEl.className = '';
+    compEl.textContent = '⚙ Add your Anthropic API key in Config to enable AI team comp analysis.';
+    return;
+  }
+  compEl.className = 'loading';
+  compEl.textContent = 'Analyzing team compositions…';
+
+  const blue = game.participants.filter(p => p.teamId === 100).map(p => {
+    const c = championById[String(p.championId)]; return c ? c.id : `Champ${p.championId}`;
+  });
+  const red = game.participants.filter(p => p.teamId === 200).map(p => {
+    const c = championById[String(p.championId)]; return c ? c.id : `Champ${p.championId}`;
+  });
+
+  const prompt = `You are an expert League of Legends analyst. Analyze these two teams in a live game:
+
+BLUE SIDE: ${blue.join(', ')}
+RED SIDE: ${red.join(', ')}
+
+Provide a concise strategic breakdown:
+
+BLUE SIDE COMP — Identify comp type (teamfight, poke, engage, split push, pick, etc.). Win condition. When do they want to fight (early/mid/late)?
+
+RED SIDE COMP — Same analysis.
+
+GAME FLOW PREDICTION — How will this game likely play out? Which team wants to group, which wants objectives, which scales, which needs to snowball early?
+
+KEY MACRO ADVICE for each team — 3 bullet points max each. Practical, specific actions (e.g. "Blue side must force Baron before Red side completes their item spike at 25 min").
+
+WHICH TEAM WINS A LONG GAME vs SHORT GAME — one sentence each.
+
+Be direct and specific. No filler.`;
+
+  try {
+    const text = await callClaude(prompt, anthropicKey);
+    compEl.className = '';
+    compEl.textContent = text;
+  } catch (e) {
+    compEl.className = '';
+    compEl.textContent = `Error generating analysis: ${e.message}`;
+  }
+}
+
+// ── Claude API call ───────────────────────────────────────────────────────────
+async function callClaude(prompt, apiKey) {
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true',
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 1000,
+      messages: [{ role: 'user', content: prompt }],
+    }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.error?.message || `Claude API error ${res.status}`);
+  }
+  const data = await res.json();
+  return data.content.map(b => b.text || '').join('');
+}
+
+// ── Enter key support ─────────────────────────────────────────────────────────
+document.getElementById('riot-id-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') analyze();
+});
+</script>
+</body>
+</html>
