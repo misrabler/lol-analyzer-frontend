@@ -3,602 +3,479 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Rift Scout — Live Game Analyzer</title>
+<title>Rift Scout</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet" />
 <style>
-  /* ── Design tokens ──────────────────────────────────────────────────────── */
   :root {
-    --ink:       #0a0c10;
-    --panel:     #0f1318;
-    --surface:   #161b24;
-    --border:    #1e2733;
-    --muted:     #2a3545;
-    --gold:      #c89b3c;
-    --gold-dim:  #7a5c1e;
-    --blue:      #4fc3f7;
-    --red:       #ef5350;
-    --green:     #66bb6a;
-    --text:      #c8d0dc;
-    --text-dim:  #6b7a8d;
-    --radius:    6px;
+    --ink:     #0a0c10;
+    --panel:   #0f1318;
+    --surface: #161b24;
+    --border:  #1e2733;
+    --muted:   #2a3545;
+    --gold:    #c89b3c;
+    --gold-dim:#7a5c1e;
+    --blue:    #4fc3f7;
+    --red:     #ef5350;
+    --green:   #66bb6a;
+    --text:    #c8d0dc;
+    --dim:     #6b7a8d;
+    --r:       6px;
   }
-
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--ink); color: var(--text); font-family: 'Inter', sans-serif; font-size: 14px; line-height: 1.5; min-height: 100vh; }
 
-  body {
-    background: var(--ink);
-    color: var(--text);
-    font-family: 'Inter', sans-serif;
-    font-size: 14px;
-    line-height: 1.6;
-    min-height: 100vh;
-  }
+  header { border-bottom: 1px solid var(--border); padding: 14px 20px; display: flex; align-items: center; gap: 12px; background: var(--panel); }
+  header h1 { font-family: 'Cinzel', serif; font-size: 18px; color: var(--gold); letter-spacing: 0.04em; }
+  header small { font-size: 11px; color: var(--dim); letter-spacing: 0.08em; text-transform: uppercase; display: block; }
 
-  /* ── Header ─────────────────────────────────────────────────────────────── */
-  header {
-    border-bottom: 1px solid var(--border);
-    padding: 18px 24px;
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    background: var(--panel);
+  #search-wrap { max-width: 620px; margin: 32px auto 0; padding: 0 20px; }
+  #search-wrap p { color: var(--dim); font-size: 12px; margin-bottom: 10px; text-align: center; }
+  .row { display: flex; gap: 8px; }
+  input[type=text], input[type=password] {
+    flex: 1; background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--r); color: var(--text); font-family: 'JetBrains Mono', monospace;
+    font-size: 14px; padding: 10px 14px; outline: none; transition: border-color .15s;
   }
-  header svg { flex-shrink: 0; }
-  header h1 {
-    font-family: 'Cinzel', serif;
-    font-size: 20px;
-    color: var(--gold);
-    letter-spacing: 0.04em;
+  input:focus { border-color: var(--gold-dim); }
+  input::placeholder { color: var(--dim); }
+  button.primary {
+    background: var(--gold); border: none; border-radius: var(--r); color: var(--ink);
+    cursor: pointer; font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 600;
+    padding: 10px 20px; transition: opacity .15s; white-space: nowrap;
   }
-  header span {
-    font-size: 11px;
-    color: var(--text-dim);
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    margin-top: 2px;
-    display: block;
-  }
+  button.primary:hover { opacity: .85; }
+  button.primary:disabled { opacity: .45; cursor: not-allowed; }
 
-  /* ── Search bar ─────────────────────────────────────────────────────────── */
-  #search-section {
-    max-width: 680px;
-    margin: 40px auto 0;
-    padding: 0 20px;
-  }
-  #search-section p {
-    color: var(--text-dim);
-    font-size: 13px;
-    margin-bottom: 14px;
-    text-align: center;
-  }
-  .search-row {
-    display: flex;
-    gap: 10px;
-  }
-  #riot-id-input {
-    flex: 1;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    color: var(--text);
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 15px;
-    padding: 12px 16px;
-    outline: none;
-    transition: border-color 0.15s;
-  }
-  #riot-id-input:focus { border-color: var(--gold-dim); }
-  #riot-id-input::placeholder { color: var(--text-dim); }
+  #cfg-link { text-align: center; margin-top: 8px; font-size: 12px; color: var(--dim); }
+  #cfg-link a { color: var(--gold-dim); cursor: pointer; text-decoration: underline; }
+  #cfg-panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); margin-top: 8px; padding: 12px 14px; display: none; }
+  #cfg-panel label { display: block; font-size: 11px; color: var(--dim); margin-bottom: 3px; margin-top: 8px; }
+  #cfg-panel label:first-child { margin-top: 0; }
+  #cfg-panel input { width: 100%; font-size: 12px; }
+  button.secondary { background: var(--muted); border: none; border-radius: var(--r); color: var(--text); cursor: pointer; font-size: 12px; font-weight: 600; padding: 6px 12px; margin-top: 10px; }
+  button.secondary:hover { background: var(--border); }
 
-  #search-btn {
-    background: var(--gold);
-    border: none;
-    border-radius: var(--radius);
-    color: var(--ink);
-    cursor: pointer;
-    font-family: 'Inter', sans-serif;
-    font-size: 13px;
-    font-weight: 600;
-    letter-spacing: 0.05em;
-    padding: 12px 22px;
-    transition: opacity 0.15s;
-    white-space: nowrap;
-  }
-  #search-btn:hover { opacity: 0.88; }
-  #search-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  #status { max-width: 620px; margin: 12px auto 0; padding: 0 20px; text-align: center; font-size: 13px; min-height: 20px; }
+  .err { color: var(--red); } .info { color: var(--dim); } .ok { color: var(--green); }
 
-  /* config link */
-  #config-toggle {
-    text-align: center;
-    margin-top: 10px;
-    font-size: 12px;
-    color: var(--text-dim);
-  }
-  #config-toggle a { color: var(--gold-dim); cursor: pointer; text-decoration: underline; }
-  #config-panel {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    margin-top: 10px;
-    padding: 14px 16px;
-    display: none;
-  }
-  #config-panel label { display: block; font-size: 12px; color: var(--text-dim); margin-bottom: 4px; }
-  #config-panel input {
-    width: 100%;
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    color: var(--text);
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 12px;
-    padding: 8px 10px;
-    outline: none;
-    margin-bottom: 10px;
-  }
-  #config-panel input:focus { border-color: var(--gold-dim); }
-  #save-config {
-    background: var(--muted);
-    border: none;
-    border-radius: var(--radius);
-    color: var(--text);
-    cursor: pointer;
-    font-size: 12px;
-    font-weight: 600;
-    padding: 7px 14px;
-  }
-  #save-config:hover { background: var(--border); }
+  #app { max-width: 1060px; margin: 24px auto 60px; padding: 0 20px; display: none; }
 
-  /* ── Status / error ─────────────────────────────────────────────────────── */
-  #status {
-    max-width: 680px;
-    margin: 16px auto 0;
-    padding: 0 20px;
-    text-align: center;
-    font-size: 13px;
-    min-height: 22px;
+  /* Comp bar */
+  #comp-bar {
+    background: var(--panel); border: 1px solid var(--border); border-radius: var(--r);
+    padding: 12px 16px; margin-bottom: 16px;
   }
-  .status-error { color: var(--red); }
-  .status-info  { color: var(--text-dim); }
-  .status-ok    { color: var(--green); }
+  .comp-row { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+  .comp-label { font-size: 10px; letter-spacing: .1em; text-transform: uppercase; white-space: nowrap; flex-shrink: 0; }
+  .comp-label.blue { color: var(--blue); }
+  .comp-label.red  { color: var(--red);  }
+  .comp-text { font-size: 13px; color: var(--text); }
+  .comp-text.dim { color: var(--dim); font-style: italic; }
+  .comp-divider { height: 1px; background: var(--border); margin: 8px 0; }
+  .patch-tag { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--dim); float: right; }
+  .cached-tag { font-size: 10px; color: var(--green); margin-left: 6px; }
 
-  /* ── Main results container ─────────────────────────────────────────────── */
-  #results { max-width: 1100px; margin: 30px auto 60px; padding: 0 20px; display: none; }
+  /* Teams */
+  .teams { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px; }
+  @media (max-width: 640px) { .teams { grid-template-columns: 1fr; } }
+  .team-card { background: var(--panel); border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; }
+  .team-hdr { padding: 8px 14px; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; border-bottom: 1px solid var(--border); }
+  .team-hdr.blue { color: var(--blue); } .team-hdr.red { color: var(--red); }
 
-  /* ── Team comp banner ───────────────────────────────────────────────────── */
-  #comp-banner {
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 18px 22px;
-    margin-bottom: 24px;
-  }
-  #comp-banner h2 {
-    font-family: 'Cinzel', serif;
-    font-size: 13px;
-    color: var(--gold);
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    margin-bottom: 12px;
-  }
-  #comp-analysis {
-    color: var(--text);
-    font-size: 14px;
-    line-height: 1.7;
-    white-space: pre-wrap;
-  }
-  #comp-analysis.loading { color: var(--text-dim); font-style: italic; }
+  /* Player row */
+  .prow { display: flex; align-items: center; gap: 10px; padding: 8px 14px; border-bottom: 1px solid var(--border); transition: background .1s; }
+  .prow:last-child { border-bottom: none; }
+  .prow.clickable { cursor: pointer; }
+  .prow.clickable:hover { background: var(--surface); }
+  .prow.active { background: var(--surface); outline: 1px solid var(--gold-dim); }
+  .champ-img { width: 38px; height: 38px; border-radius: 4px; object-fit: cover; background: var(--muted); flex-shrink: 0; }
+  .prow-info { flex: 1; min-width: 0; }
+  .prow-name { font-weight: 600; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .prow-sub { font-size: 11px; color: var(--dim); display: flex; gap: 6px; align-items: center; margin-top: 2px; }
+  .role-badge { font-size: 10px; background: var(--muted); border-radius: 3px; padding: 1px 5px; color: var(--text); text-transform: uppercase; letter-spacing: .04em; }
+  .you-tag { font-size: 10px; background: var(--gold-dim); border-radius: 3px; padding: 1px 6px; color: var(--gold); font-weight: 600; }
+  .click-hint { font-size: 10px; color: var(--dim); margin-left: auto; }
 
-  /* ── Teams grid ─────────────────────────────────────────────────────────── */
-  .teams-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 18px;
-    margin-bottom: 24px;
-  }
-  @media (max-width: 700px) { .teams-grid { grid-template-columns: 1fr; } }
+  /* Matchup panel */
+  #matchup-panel { background: var(--panel); border: 1px solid var(--border); border-radius: var(--r); padding: 14px 18px; display: none; }
+  #matchup-header { display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+  #matchup-title { font-family: 'Cinzel', serif; font-size: 13px; color: var(--gold); letter-spacing: .08em; }
+  #matchup-meta { font-size: 11px; color: var(--dim); }
+  #matchup-content { font-size: 13px; color: var(--text); line-height: 1.8; white-space: pre-wrap; }
+  #matchup-content.dim { color: var(--dim); font-style: italic; }
 
-  .team-card {
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    overflow: hidden;
-  }
-  .team-header {
-    padding: 10px 16px;
-    font-family: 'Cinzel', serif;
-    font-size: 12px;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    border-bottom: 1px solid var(--border);
-  }
-  .team-header.blue-side { color: var(--blue); }
-  .team-header.red-side  { color: var(--red); }
-
-  /* ── Player row ─────────────────────────────────────────────────────────── */
-  .player-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 10px 16px;
-    border-bottom: 1px solid var(--border);
-    cursor: pointer;
-    transition: background 0.12s;
-  }
-  .player-row:last-child { border-bottom: none; }
-  .player-row:hover { background: var(--surface); }
-  .player-row.active { background: var(--surface); outline: 1px solid var(--gold-dim); }
-
-  .champ-icon {
-    width: 42px;
-    height: 42px;
-    border-radius: 4px;
-    object-fit: cover;
-    flex-shrink: 0;
-    background: var(--muted);
-  }
-  .player-info { flex: 1; min-width: 0; }
-  .player-name {
-    font-weight: 600;
-    font-size: 13px;
-    color: var(--text);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .champ-name { font-size: 12px; color: var(--text-dim); }
-  .rank-badge {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
-    color: var(--gold);
-    white-space: nowrap;
-  }
-
-  /* ── Matchup drawer ─────────────────────────────────────────────────────── */
-  #matchup-drawer {
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 20px 22px;
-    display: none;
-  }
-  #matchup-drawer h2 {
-    font-family: 'Cinzel', serif;
-    font-size: 13px;
-    color: var(--gold);
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    margin-bottom: 4px;
-  }
-  #matchup-subtitle { font-size: 12px; color: var(--text-dim); margin-bottom: 14px; }
-  #matchup-content {
-    color: var(--text);
-    font-size: 14px;
-    line-height: 1.75;
-    white-space: pre-wrap;
-  }
-  #matchup-content.loading { color: var(--text-dim); font-style: italic; }
-
-  /* ── Spinner ────────────────────────────────────────────────────────────── */
   @keyframes spin { to { transform: rotate(360deg); } }
-  .spinner {
-    display: inline-block;
-    width: 14px; height: 14px;
-    border: 2px solid var(--muted);
-    border-top-color: var(--gold);
-    border-radius: 50%;
-    animation: spin 0.7s linear infinite;
-    vertical-align: middle;
-    margin-right: 6px;
-  }
+  .spin { display: inline-block; width: 12px; height: 12px; border: 2px solid var(--muted); border-top-color: var(--gold); border-radius: 50%; animation: spin .7s linear infinite; vertical-align: middle; margin-right: 6px; }
 </style>
 </head>
 <body>
 
 <header>
-  <!-- Sword / crosshair icon -->
-  <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <circle cx="14" cy="14" r="12" stroke="#c89b3c" stroke-width="1.5"/>
-    <line x1="14" y1="4" x2="14" y2="24" stroke="#c89b3c" stroke-width="1.5"/>
-    <line x1="4" y1="14" x2="24" y2="14" stroke="#c89b3c" stroke-width="1.5"/>
-    <circle cx="14" cy="14" r="2.5" fill="#c89b3c"/>
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+    <circle cx="12" cy="12" r="10" stroke="#c89b3c" stroke-width="1.5"/>
+    <line x1="12" y1="4" x2="12" y2="20" stroke="#c89b3c" stroke-width="1.5"/>
+    <line x1="4" y1="12" x2="20" y2="12" stroke="#c89b3c" stroke-width="1.5"/>
+    <circle cx="12" cy="12" r="2" fill="#c89b3c"/>
   </svg>
-  <div>
-    <h1>Rift Scout</h1>
-    <span>Live Game Analyzer · NA</span>
-  </div>
+  <div><h1>Rift Scout</h1><small>Live Game Analyzer · NA</small></div>
 </header>
 
-<section id="search-section">
-  <p>Enter any player's Riot ID to analyze their live game</p>
-  <div class="search-row">
-    <input id="riot-id-input" type="text" placeholder="PlayerName#NA1" autocomplete="off" />
-    <button id="search-btn" onclick="analyze()">Analyze Game</button>
+<div id="search-wrap">
+  <p>Enter your Riot ID to analyze your live game</p>
+  <div class="row">
+    <input id="rid" type="text" placeholder="YourName#NA1" autocomplete="off" />
+    <button class="primary" onclick="analyze()">Analyze</button>
   </div>
-  <div id="config-toggle"><a onclick="toggleConfig()">⚙ Configure backend URL &amp; API keys</a></div>
-  <div id="config-panel">
-    <label>Backend URL (your Render service, e.g. https://your-app.onrender.com)</label>
+  <div id="cfg-link"><a onclick="toggleCfg()">⚙ Configure</a></div>
+  <div id="cfg-panel">
+    <label>Backend URL (your Render service)</label>
     <input id="cfg-backend" type="text" placeholder="https://your-app.onrender.com" />
-    <label>Anthropic API Key (for AI analysis — stays in your browser only)</label>
+    <label>Anthropic API Key</label>
     <input id="cfg-anthropic" type="password" placeholder="sk-ant-..." />
-    <button id="save-config" onclick="saveConfig()">Save</button>
+    <button class="secondary" onclick="saveCfg()">Save</button>
   </div>
-</section>
+</div>
 
 <div id="status"></div>
-<div id="results">
-  <div id="comp-banner">
-    <h2>Team Composition &amp; Game Plan</h2>
-    <div id="comp-analysis" class="loading">Analyzing team compositions…</div>
+
+<div id="app">
+  <div id="comp-bar">
+    <span class="patch-tag" id="patch-tag"></span>
+    <div class="comp-row">
+      <span class="comp-label blue">Your Team</span>
+      <span class="comp-text dim" id="blue-comp">Analyzing…</span>
+    </div>
+    <div class="comp-divider"></div>
+    <div class="comp-row">
+      <span class="comp-label red">Enemy</span>
+      <span class="comp-text dim" id="red-comp">Analyzing…</span>
+    </div>
   </div>
-  <div class="teams-grid">
+
+  <div class="teams">
     <div class="team-card">
-      <div class="team-header blue-side">Blue Side</div>
-      <div id="blue-team"></div>
+      <div class="team-hdr blue" id="my-team-hdr">Your Team</div>
+      <div id="my-team"></div>
     </div>
     <div class="team-card">
-      <div class="team-header red-side">Red Side</div>
-      <div id="red-team"></div>
+      <div class="team-hdr red" id="enemy-team-hdr">Enemy Team</div>
+      <div id="enemy-team"></div>
     </div>
   </div>
-  <div id="matchup-drawer">
-    <h2 id="matchup-title">Matchup Analysis</h2>
-    <div id="matchup-subtitle"></div>
-    <div id="matchup-content" class="loading"></div>
+
+  <div id="matchup-panel">
+    <div id="matchup-header">
+      <span id="matchup-title">Lane Matchup</span>
+      <span id="matchup-meta"></span>
+    </div>
+    <div id="matchup-content" class="dim">Click your champion to see your lane matchup.</div>
   </div>
 </div>
 
 <script>
-// ── Config persistence ────────────────────────────────────────────────────────
-function getConfig() {
-  return {
-    backend:   localStorage.getItem('rs_backend')   || '',
-    anthropic: localStorage.getItem('rs_anthropic') || '',
-  };
+// ── Roles by array index (Riot spectator order matches loading screen) ─────────
+const ROLE_BY_INDEX = ['TOP', 'JUNGLE', 'MIDDLE', 'BOTTOM', 'UTILITY'];
+const ROLE_LABEL    = { TOP: 'Top', JUNGLE: 'Jgl', MIDDLE: 'Mid', BOTTOM: 'ADC', UTILITY: 'Sup' };
+
+// ── Config ────────────────────────────────────────────────────────────────────
+function getCfg() {
+  return { backend: localStorage.getItem('rs_backend') || '', anthropic: localStorage.getItem('rs_anthropic') || '' };
 }
-function saveConfig() {
+function saveCfg() {
   localStorage.setItem('rs_backend',   document.getElementById('cfg-backend').value.trim());
   localStorage.setItem('rs_anthropic', document.getElementById('cfg-anthropic').value.trim());
-  setStatus('Config saved.', 'ok');
+  setStatus('Saved.', 'ok');
 }
-function toggleConfig() {
-  const panel = document.getElementById('config-panel');
-  const cfg = getConfig();
-  document.getElementById('cfg-backend').value   = cfg.backend;
-  document.getElementById('cfg-anthropic').value = cfg.anthropic;
-  panel.style.display = panel.style.display === 'block' ? 'none' : 'block';
+function toggleCfg() {
+  const p = document.getElementById('cfg-panel');
+  const c = getCfg();
+  document.getElementById('cfg-backend').value   = c.backend;
+  document.getElementById('cfg-anthropic').value = c.anthropic;
+  p.style.display = p.style.display === 'block' ? 'none' : 'block';
 }
 function setStatus(msg, type = 'info') {
   const el = document.getElementById('status');
-  el.className = `status-${type}`;
-  el.innerHTML = msg;
+  el.className = type; el.innerHTML = msg;
 }
 
-// ── Data Dragon helpers ───────────────────────────────────────────────────────
-let ddVersion = '14.10.1';
-let championById = {};   // keyed by string champion key (number id)
-let championByName = {}; // keyed by champion name
+// ── Data Dragon ───────────────────────────────────────────────────────────────
+let ddVer = '14.10.1', currentPatch = '14.10';
+let champById = {};
 
-async function loadChampionData(backendBase) {
+async function loadChamps(base) {
   try {
-    const res = await fetch(`${backendBase}/api/champions`);
-    const json = await res.json();
-    ddVersion = json.version;
-    for (const [name, champ] of Object.entries(json.data)) {
-      championById[champ.key]  = champ;
-      championByName[name]     = champ;
-    }
-  } catch (_) { /* fallback silently */ }
+    const r = await fetch(`${base}/api/champions`);
+    const j = await r.json();
+    ddVer = j.version;
+    currentPatch = j.patch;
+    document.getElementById('patch-tag').textContent = `Patch ${currentPatch}`;
+    for (const [, c] of Object.entries(j.data)) champById[c.key] = c;
+  } catch (_) {}
 }
 
-function champIconUrl(champName) {
-  return `https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/champion/${champName}.png`;
+function champImg(name) {
+  return `https://ddragon.leagueoflegends.com/cdn/${ddVer}/img/champion/${name}.png`;
 }
 
-// ── Riot ID parsing ───────────────────────────────────────────────────────────
-function parseRiotId(raw) {
-  const parts = raw.trim().split('#');
-  if (parts.length !== 2 || !parts[0] || !parts[1])
-    throw new Error('Enter your Riot ID as Name#Tag — e.g. PlayerName#NA1');
-  return { gameName: parts[0].trim(), tagLine: parts[1].trim() };
+function champName(championId) {
+  const c = champById[String(championId)];
+  return c ? c.id : `Champ${championId}`;
 }
 
-// ── Main analyze flow ─────────────────────────────────────────────────────────
-let gameData = null;
-let activePlayerRow = null;
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function parseRid(raw) {
+  const p = raw.trim().split('#');
+  if (p.length !== 2 || !p[0] || !p[1]) throw new Error('Format: Name#Tag — e.g. PlayerName#NA1');
+  return { gameName: p[0].trim(), tagLine: p[1].trim() };
+}
+async function apiFetch(url, opts) {
+  const r = await fetch(url, opts);
+  const j = await r.json();
+  if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`);
+  return j;
+}
 
+// ── State ─────────────────────────────────────────────────────────────────────
+let myPuuid = null, myTeamId = null, activeRow = null;
+let myTeamPlayers = [], enemyTeamPlayers = [];
+
+// ── Main ──────────────────────────────────────────────────────────────────────
 async function analyze() {
-  const cfg = getConfig();
+  const cfg = getCfg();
   if (!cfg.backend) {
-    setStatus('⚠ Set your backend URL in ⚙ Config first.', 'error');
-    document.getElementById('config-panel').style.display = 'block';
+    setStatus('⚠ Set your backend URL in ⚙ Configure first.', 'err');
+    document.getElementById('cfg-panel').style.display = 'block';
     return;
   }
-  const raw = document.getElementById('riot-id-input').value;
-  let riotId;
-  try { riotId = parseRiotId(raw); }
-  catch (e) { setStatus(e.message, 'error'); return; }
 
-  const btn = document.getElementById('search-btn');
+  let rid;
+  try { rid = parseRid(document.getElementById('rid').value); }
+  catch (e) { setStatus(e.message, 'err'); return; }
+
+  const btn = document.querySelector('button.primary');
   btn.disabled = true;
-  document.getElementById('results').style.display = 'none';
-  setStatus('<span class="spinner"></span>Looking up account…', 'info');
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('matchup-panel').style.display = 'none';
+  activeRow = null;
 
   const base = cfg.backend.replace(/\/$/, '');
 
   try {
-    // 1. Riot ID → PUUID
-    const account = await apiFetch(`${base}/api/account/${encodeURIComponent(riotId.gameName)}/${encodeURIComponent(riotId.tagLine)}`);
+    setStatus('<span class="spin"></span>Looking up account…', 'info');
+    const account = await apiFetch(`${base}/api/account/${encodeURIComponent(rid.gameName)}/${encodeURIComponent(rid.tagLine)}`);
+    myPuuid = account.puuid;
 
-    setStatus('<span class="spinner"></span>Fetching live game…', 'info');
-    // 2. PUUID → Live game directly (Spectator v5 supports PUUID)
-    const game = await apiFetch(`${base}/api/livegame/${account.puuid}`);
-    gameData = game;
+    setStatus('<span class="spin"></span>Fetching live game…', 'info');
+    const game = await apiFetch(`${base}/api/livegame/${myPuuid}`);
+
+    const me = game.participants.find(p => p.puuid === myPuuid);
+    if (!me) throw new Error('Could not find you in this game.');
+    myTeamId = me.teamId;
+
+    setStatus('<span class="spin"></span>Loading data…', 'info');
+    await loadChamps(base);
 
     setStatus('', 'info');
-    await loadChampionData(base);
-    renderGame(game, riotId.gameName, cfg.anthropic);
-    runCompAnalysis(game, cfg.anthropic);
+    renderGame(game, cfg.anthropic, base);
+    runCompAnalysis(game, cfg.anthropic, base);
+
   } catch (e) {
-    setStatus(e.message, 'error');
+    setStatus(e.message, 'err');
   } finally {
     btn.disabled = false;
   }
 }
 
-async function apiFetch(url) {
-  const res = await fetch(url);
-  const json = await res.json();
-  if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
-  return json;
-}
-
-// ── Render both teams ─────────────────────────────────────────────────────────
-function renderGame(game, searchedName, anthropicKey) {
+// ── Render ────────────────────────────────────────────────────────────────────
+function renderGame(game, anthropicKey, base) {
   const blue = game.participants.filter(p => p.teamId === 100);
   const red  = game.participants.filter(p => p.teamId === 200);
 
-  document.getElementById('blue-team').innerHTML = '';
-  document.getElementById('red-team').innerHTML  = '';
-  document.getElementById('matchup-drawer').style.display = 'none';
-  document.getElementById('results').style.display = 'block';
+  myTeamPlayers    = myTeamId === 100 ? blue : red;
+  enemyTeamPlayers = myTeamId === 100 ? red  : blue;
 
-  renderTeam(blue, 'blue-team', anthropicKey, game);
-  renderTeam(red,  'red-team',  anthropicKey, game);
+  document.getElementById('my-team').innerHTML    = '';
+  document.getElementById('enemy-team').innerHTML = '';
+  document.getElementById('app').style.display    = 'block';
+  document.getElementById('matchup-panel').style.display = 'block';
+
+  renderTeam(myTeamPlayers,    'my-team',    true,  anthropicKey, base);
+  renderTeam(enemyTeamPlayers, 'enemy-team', false, anthropicKey, base);
 }
 
-function renderTeam(players, containerId, anthropicKey, game) {
+function renderTeam(players, containerId, isMyTeam, anthropicKey, base) {
   const container = document.getElementById(containerId);
-  for (const p of players) {
-    const champ = championById[String(p.championId)];
-    const champName = champ ? champ.id : `Champion ${p.championId}`;
+  players.forEach((p, idx) => {
+    const role  = ROLE_BY_INDEX[idx] || 'UNKNOWN';
+    const label = ROLE_LABEL[role]   || '?';
+    const name  = champName(p.championId);
+    const isMe  = p.puuid === myPuuid;
+
     const row = document.createElement('div');
-    row.className = 'player-row';
-    row.dataset.summonerName = p.riotId || p.summonerName || 'Unknown';
-    row.dataset.champion = champName;
-    row.dataset.teamId = p.teamId;
+    row.className = 'prow' + (isMyTeam ? ' clickable' : '');
     row.innerHTML = `
-      <img class="champ-icon" src="${champIconUrl(champName)}" alt="${champName}"
-           onerror="this.src='https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/champion/Lux.png'" />
-      <div class="player-info">
-        <div class="player-name">${p.riotId || p.summonerName || 'Unknown'}</div>
-        <div class="champ-name">${champName}</div>
+      <img class="champ-img" src="${champImg(name)}" alt="${name}"
+           onerror="this.src='https://ddragon.leagueoflegends.com/cdn/${ddVer}/img/champion/Lux.png'" />
+      <div class="prow-info">
+        <div class="prow-name">
+          ${p.riotId || p.summonerName || 'Unknown'}
+          ${isMe ? '<span class="you-tag">YOU</span>' : ''}
+        </div>
+        <div class="prow-sub">
+          <span class="role-badge">${label}</span>
+          <span>${name}</span>
+        </div>
       </div>
+      ${isMyTeam ? '<span class="click-hint">click for matchup</span>' : ''}
     `;
-    row.onclick = () => openMatchup(row, game, anthropicKey);
+
+    if (isMyTeam) {
+      row.onclick = () => openMatchup(row, idx, name, role, anthropicKey, base);
+    }
     container.appendChild(row);
-  }
+  });
 }
 
-// ── Matchup drawer ────────────────────────────────────────────────────────────
-async function openMatchup(row, game, anthropicKey) {
-  if (activePlayerRow) activePlayerRow.classList.remove('active');
+// ── Matchup ───────────────────────────────────────────────────────────────────
+async function openMatchup(row, myIdx, myChamp, myRole, anthropicKey, base) {
+  if (activeRow) activeRow.classList.remove('active');
   row.classList.add('active');
-  activePlayerRow = row;
+  activeRow = row;
 
-  const myChamp  = row.dataset.champion;
-  const myTeamId = Number(row.dataset.teamId);
-  const enemies  = game.participants.filter(p => p.teamId !== myTeamId);
+  // Enemy at same index = same role (array position = role)
+  const enemyMain = enemyTeamPlayers[myIdx];
+  const enemyMainChamp = enemyMain ? champName(enemyMain.championId) : null;
 
-  const enemyChamps = enemies.map(p => {
-    const c = championById[String(p.championId)];
-    return c ? c.id : `Champion${p.championId}`;
-  });
+  // Bot lane — pair ADC(idx 3) with Support(idx 4)
+  let myPartnerChamp = null, enemyPartnerChamp = null;
+  if (myRole === 'BOTTOM') {
+    const partner = myTeamPlayers[4];
+    if (partner) myPartnerChamp = champName(partner.championId);
+    const enemyPartner = enemyTeamPlayers[4];
+    if (enemyPartner) enemyPartnerChamp = champName(enemyPartner.championId);
+  }
+  if (myRole === 'UTILITY') {
+    const partner = myTeamPlayers[3];
+    if (partner) myPartnerChamp = champName(partner.championId);
+    const enemyPartner = enemyTeamPlayers[3];
+    if (enemyPartner) enemyPartnerChamp = champName(enemyPartner.championId);
+  }
 
-  const drawer = document.getElementById('matchup-drawer');
-  drawer.style.display = 'block';
-  document.getElementById('matchup-title').textContent = `${myChamp} vs Enemy Team`;
-  document.getElementById('matchup-subtitle').textContent =
-    `Click any player to see their matchup breakdown`;
+  // Build matchup key — sort so Ashe+Seraphine vs X = Seraphine+Ashe vs X
+  const myChamps    = [myChamp, myPartnerChamp].filter(Boolean).sort().join('+');
+  const enemyChamps = [enemyMainChamp, enemyPartnerChamp].filter(Boolean).sort().join('+');
+  const matchupKey  = `${myChamps}_vs_${enemyChamps}`;
+
+  // Display
+  const panel   = document.getElementById('matchup-panel');
   const content = document.getElementById('matchup-content');
-  content.className = 'loading';
-  content.textContent = '⚔ Analyzing matchup…';
+  const title   = document.getElementById('matchup-title');
+  const meta    = document.getElementById('matchup-meta');
 
-  drawer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const myLabel    = myPartnerChamp    ? `${myChamp} + ${myPartnerChamp}`    : `${myChamp} (${ROLE_LABEL[myRole]})`;
+  const enemyLabel = enemyPartnerChamp ? `${enemyMainChamp} + ${enemyPartnerChamp}` : (enemyMainChamp || 'Unknown');
+
+  title.textContent = `${myLabel} vs ${enemyLabel}`;
+  meta.textContent  = '';
+  content.className = 'dim';
+  content.textContent = 'Checking cache…';
+  panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
   if (!anthropicKey) {
-    content.className = '';
-    content.textContent = '⚙ Add your Anthropic API key in Config to enable AI matchup analysis.';
+    content.className   = '';
+    content.textContent = '⚙ Add your Anthropic API key in Configure to enable matchup analysis.';
     return;
   }
 
-  const prompt = `You are an expert League of Legends coach. Analyze the following matchup:
-
-Player's champion: ${myChamp}
-Enemy team: ${enemyChamps.join(', ')}
-
-Provide a clear, practical breakdown:
-1. BIGGEST THREATS — which enemy champion(s) are most dangerous and why
-2. POWER SPIKES — key levels and item timings to watch for (both yours and theirs)
-3. EARLY GAME (laning) — how to play the first 10 minutes, trade patterns, when to engage or avoid
-4. MID/LATE GAME — teamfight role, positioning, priority targets
-5. ITEMS TO RUSH — 1-2 specific first/second item recommendations and why they work in this game
-6. KEY WARNINGS — 2-3 specific things NOT to do in this matchup
-
-Be specific and direct. No generic advice. Write as if coaching a Diamond player mid-game.`;
-
   try {
-    const text = await callClaude(prompt, anthropicKey);
-    content.className = '';
-    content.textContent = text;
+    // Check cache first
+    const cache = await apiFetch(`${base}/api/matchup/${encodeURIComponent(matchupKey)}`);
+
+    if (cache.cached) {
+      content.className   = '';
+      content.textContent = cache.analysis;
+      meta.innerHTML      = `<span class="cached-tag">✓ cached · patch ${cache.patch}</span>`;
+      return;
+    }
+
+    // Not cached — call Claude
+    content.textContent = 'Generating matchup…';
+    meta.textContent    = `patch ${cache.patch}`;
+
+    const isBotLane = myPartnerChamp !== null;
+    const prompt = isBotLane
+      ? `LoL matchup. My bot lane: ${myChamp} + ${myPartnerChamp}. Enemy bot lane: ${enemyMainChamp} + ${enemyPartnerChamp}. Give exactly 4 bullet points using • symbol. Max 12 words each. Cover: biggest threat, trade tip, power spike to respect, item to rush. No headers.`
+      : `LoL matchup. My ${ROLE_LABEL[myRole]}: ${myChamp} vs enemy ${ROLE_LABEL[myRole]}: ${enemyMainChamp}. Give exactly 4 bullet points using • symbol. Max 12 words each. Cover: biggest threat, trade tip, power spike to respect, item to rush. No headers.`;
+
+    const analysis = await callClaude(prompt, anthropicKey);
+    content.className   = '';
+    content.textContent = analysis;
+
+    // Save to cache
+    await apiFetch(`${base}/api/matchup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ matchup_key: matchupKey, analysis, patch: cache.patch })
+    });
+
   } catch (e) {
-    content.className = '';
+    content.className   = '';
     content.textContent = `Error: ${e.message}`;
   }
 }
 
-// ── Team comp / game plan analysis ───────────────────────────────────────────
-async function runCompAnalysis(game, anthropicKey) {
-  const compEl = document.getElementById('comp-analysis');
+// ── Team comp analysis ────────────────────────────────────────────────────────
+async function runCompAnalysis(game, anthropicKey, base) {
+  const blueEl = document.getElementById('blue-comp');
+  const redEl  = document.getElementById('red-comp');
+
+  const myTeam    = game.participants.filter(p => p.teamId === myTeamId);
+  const enemyTeam = game.participants.filter(p => p.teamId !== myTeamId);
+  const names     = (team) => team.map(p => champName(p.championId)).join(', ');
+
   if (!anthropicKey) {
-    compEl.className = '';
-    compEl.textContent = '⚙ Add your Anthropic API key in Config to enable AI team comp analysis.';
+    blueEl.className = 'comp-text'; blueEl.textContent = 'Add API key for analysis.';
+    redEl.className  = 'comp-text'; redEl.textContent  = 'Add API key for analysis.';
     return;
   }
-  compEl.className = 'loading';
-  compEl.textContent = 'Analyzing team compositions…';
 
-  const blue = game.participants.filter(p => p.teamId === 100).map(p => {
-    const c = championById[String(p.championId)]; return c ? c.id : `Champ${p.championId}`;
-  });
-  const red = game.participants.filter(p => p.teamId === 200).map(p => {
-    const c = championById[String(p.championId)]; return c ? c.id : `Champ${p.championId}`;
-  });
+  const compKey     = `comp_${names(myTeam)}_vs_${names(enemyTeam)}`;
+  const cacheCheck  = await apiFetch(`${base}/api/matchup/${encodeURIComponent(compKey)}`).catch(() => ({ cached: false, patch: currentPatch }));
 
-  const prompt = `You are an expert League of Legends analyst. Analyze these two teams in a live game:
+  if (cacheCheck.cached) {
+    const lines  = cacheCheck.analysis.split('\n').filter(Boolean);
+    blueEl.className = 'comp-text'; blueEl.textContent = lines[0] || '';
+    redEl.className  = 'comp-text'; redEl.textContent  = lines[1] || '';
+    return;
+  }
 
-BLUE SIDE: ${blue.join(', ')}
-RED SIDE: ${red.join(', ')}
-
-Provide a concise strategic breakdown:
-
-BLUE SIDE COMP — Identify comp type (teamfight, poke, engage, split push, pick, etc.). Win condition. When do they want to fight (early/mid/late)?
-
-RED SIDE COMP — Same analysis.
-
-GAME FLOW PREDICTION — How will this game likely play out? Which team wants to group, which wants objectives, which scales, which needs to snowball early?
-
-KEY MACRO ADVICE for each team — 3 bullet points max each. Practical, specific actions (e.g. "Blue side must force Baron before Red side completes their item spike at 25 min").
-
-WHICH TEAM WINS A LONG GAME vs SHORT GAME — one sentence each.
-
-Be direct and specific. No filler.`;
+  const prompt = `LoL analyst. My team: ${names(myTeam)}. Enemy: ${names(enemyTeam)}.
+Reply in EXACTLY this format, two lines only, no extra text:
+[comp type] | Win: [condition] | Peaks: [early/mid/late]
+[comp type] | Win: [condition] | Peaks: [early/mid/late]`;
 
   try {
-    const text = await callClaude(prompt, anthropicKey);
-    compEl.className = '';
-    compEl.textContent = text;
+    const text  = await callClaude(prompt, anthropicKey);
+    const lines = text.trim().split('\n').filter(Boolean);
+    blueEl.className = 'comp-text'; blueEl.textContent = lines[0] || '';
+    redEl.className  = 'comp-text'; redEl.textContent  = lines[1] || '';
+
+    // Cache the comp analysis too
+    await apiFetch(`${base}/api/matchup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ matchup_key: compKey, analysis: lines.join('\n'), patch: currentPatch })
+    });
   } catch (e) {
-    compEl.className = '';
-    compEl.textContent = `Error generating analysis: ${e.message}`;
+    blueEl.className = 'comp-text'; blueEl.textContent = 'Analysis unavailable.';
+    redEl.className  = 'comp-text'; redEl.textContent  = 'Analysis unavailable.';
   }
 }
 
-// ── Claude API call ───────────────────────────────────────────────────────────
+// ── Claude API ────────────────────────────────────────────────────────────────
 async function callClaude(prompt, apiKey) {
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
+  const r = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -607,23 +484,17 @@ async function callClaude(prompt, apiKey) {
       'anthropic-dangerous-direct-browser-access': 'true',
     },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 1000,
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 200,
       messages: [{ role: 'user', content: prompt }],
     }),
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err?.error?.message || `Claude API error ${res.status}`);
-  }
-  const data = await res.json();
-  return data.content.map(b => b.text || '').join('');
+  if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e?.error?.message || `Claude error ${r.status}`); }
+  const d = await r.json();
+  return d.content.map(b => b.text || '').join('');
 }
 
-// ── Enter key support ─────────────────────────────────────────────────────────
-document.getElementById('riot-id-input').addEventListener('keydown', e => {
-  if (e.key === 'Enter') analyze();
-});
+document.getElementById('rid').addEventListener('keydown', e => { if (e.key === 'Enter') analyze(); });
 </script>
 </body>
 </html>
