@@ -298,8 +298,20 @@ function spellImgUrl(id)  {
   return s ? `${DD_BASE}/${ddVer}/img/spell/${s.image}` : '';
 }
 function keystoneImgUrl(id) {
+  if (!id) return '';
   const k = keystones[String(id)];
-  return k ? `https://ddragon.leagueoflegends.com/cdn/img/${k.icon}` : '';
+  if (k) return `https://ddragon.leagueoflegends.com/cdn/img/${k.icon}`;
+  return '';
+}
+
+function getKeystone(participant) {
+  const p = participant.perks;
+  if (!p) return null;
+  // Structure 1: styles[0].selections[0].perk (live game format)
+  if (p.styles?.[0]?.selections?.[0]?.perk) return p.styles[0].selections[0].perk;
+  // Structure 2: perkIds[0] (spectator v5 format)
+  if (p.perkIds?.[0]) return p.perkIds[0];
+  return null;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -450,7 +462,7 @@ function buildCell(participant, role, isMine, rowIdx, anthropicKey, base) {
 
   const name     = champName(participant.championId);
   const isMe     = participant.puuid === myPuuid;
-  const keystone = participant.perks?.styles?.[0]?.selections?.[0]?.perk;
+  const keystone = getKeystone(participant);
 
   const spellPairHtml = `
     <div class="spell-pair">
